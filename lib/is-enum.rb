@@ -22,6 +22,23 @@ class IS::Enum
       end
     end
 
+    def parse source
+      raise ArgumentError, "Invalid source for parsing: #{ source.inspect }", caller_locations
+      if self == IS::Enum
+        parts = source.split '.'
+        raise ArgumentError, "Parsing error from #{ source.inspect }", caller_locations unless parts.is_a?(Array) && parts.size == 2
+        cls = @@enums[parts[0]]
+        raise ArgumentError, "Enum class not found: #{ parts[0] }", caller_locations unless cls
+        val = cls[parts[1].to_sym]
+        raise ArgumentError, "#{ cls.name } value not found: #{ parts[1] }", caller_locations unless val
+        return val
+      else
+        val = self[source.to_sym]
+        raise ArgumentError, "#{ self.name } value not found: #{ source }", caller_locations unless val
+        return val
+      end
+    end
+
     def each
       return to_enum(__method__) unless block_given?
       @values.values.sort_by { |v| v.order_no }.each { |v| yield v }
@@ -33,6 +50,20 @@ class IS::Enum
 
     def aliases
       @aliases
+    end
+
+    def last
+      values.to_a.last
+    end
+
+    def to_range
+      (first .. last)
+    end
+
+    def to_h
+      result = {}
+      result.merge! @values
+      result.merge! @aliases
     end
 
     protected
@@ -89,6 +120,16 @@ class IS::Enum
       value
     end
 
+    def finalize!
+      @values.freeze
+      @aliases.freeze
+    end
+
+    def inherited subclass
+      @@enums ||= {}
+      @@enums[subclass.name] = subclass
+    end
+
     private :new
 
   end
@@ -99,9 +140,7 @@ class IS::Enum
     @order_no = order_no
     @name = name
     @description = description
-    attrs.each do |key, value|
-      instance_variable_set "@#{ key }", value
-    end
+    @attrs = attrs
   end
 
   def <=> other
@@ -121,14 +160,21 @@ class IS::Enum
     name
   end
 
-  def next
+  def succ
     self.class.values.find { |v| v.order_no > self.order_no }
   end
 
-  def previous
-    values = self.class.values.to_a
-    index = values.rindex { |v| v.order_no < self.order_no }
-    values[index]
+  def to_s
+    name.to_s
+  end
+
+  def inspect
+    data = [ "#{ self.class }.#{ self.name }", "order_no=#{ @order_no }" ]
+    data << "description=#{ @description.inspect }" if @description
+    @attrs.each do |key, value|
+      data << "#{ key }=#{ value.inspect }"
+    end
+    "[enum #{ data.join(' ') }]"
   end
 
 end
