@@ -6,3 +6,17 @@
 ![Coverage](coverage-badge.svg)
 
 Enum types for Ruby
+
+## Usage
+
+```ruby
+require 'is-enum'
+
+class MyEnum < IS::Enum
+
+  define :alpha, 1
+  define :beta,  2
+  define :b, alias: :beta
+
+end
+```
