@@ -65,10 +65,23 @@
 <img src="coverage-badge.svg" alt="Coverage"></p>
 
 <p>Enum types for Ruby</p>
+
+<h2 id="usage">Usage</h2>
+
+<pre class="code ruby"><code class="ruby"><span class='id identifier rubyid_require'>require</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>is-enum</span><span class='tstring_end'>&#39;</span></span>
+
+<span class='kw'>class</span> <span class='const'>MyEnum</span> <span class='op'>&lt;</span> <span class='const'><span class='object_link'><a href="IS.html" title="IS (module)">IS</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="IS/Enum.html" title="IS::Enum (class)">Enum</a></span></span>
+
+  <span class='id identifier rubyid_define'>define</span> <span class='symbol'>:alpha</span><span class='comma'>,</span> <span class='int'>1</span>
+  <span class='id identifier rubyid_define'>define</span> <span class='symbol'>:beta</span><span class='comma'>,</span>  <span class='int'>2</span>
+  <span class='id identifier rubyid_define'>define</span> <span class='symbol'>:b</span><span class='comma'>,</span> <span class='label'>alias:</span> <span class='symbol'>:beta</span>
+
+<span class='kw'>end</span>
+</code></pre>
 </div></div>
 
       <div id="footer">
-  Generated on Sat Jan 10 19:01:01 2026 by
+  Generated on Sat Jan 10 19:07:18 2026 by
   <a href="https://yardoc.org" title="Yay! A Ruby Documentation Tool" target="_parent">yard</a>
   0.9.38 (ruby-3.4.8).
 </div>
