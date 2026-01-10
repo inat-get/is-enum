@@ -1,3 +1,8 @@
 # is-enum
 
+[![GitHub License](https://img.shields.io/github/license/inat-get/is-enum)](LICENSE)
+[![Gem Version](https://badge.fury.io/rb/is-enum.svg?icon=si%3Arubygems)](https://badge.fury.io/rb/is-enum)
+[![Ruby](https://github.com/inat-get/is-enum/actions/workflows/ruby.yml/badge.svg)](https://github.com/inat-get/is-enum/actions/workflows/ruby.yml) 
+![Coverage](coverage-badge.svg)
+
 Enum types for Ruby
