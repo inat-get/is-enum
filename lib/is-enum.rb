@@ -39,6 +39,13 @@ class IS::Enum
       end
     end
 
+    def of name
+      raise ArgumentError, "Invalid name of #{ self }: #{ name.inspect }" unless name.is_a?(Symbol)
+      val = @values[name] || @aliases[name]
+      raise ArgumentError, "Invalid name of #{ self }: #{ name }" unless val
+      return val
+    end
+
     def each
       return to_enum(__method__) unless block_given?
       @values.values.sort_by { |v| v.order_no }.each { |v| yield v }

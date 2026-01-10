@@ -1,6 +1,6 @@
 Gem::Specification::new do |s|
   s.name = "is-enum"
-  s.version = "0.8.0"
+  s.version = "0.8.2"
   s.summary = "Enum types for Ruby"
   s.description = "Enum types for Ruby."
   s.authors = ["Ivan Shikhalev"]
