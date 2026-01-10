@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require 'set'
+
 module IS; end
 
 class IS::Enum
@@ -44,6 +46,23 @@ class IS::Enum
       val = @values[name] || @aliases[name]
       raise ArgumentError, "Invalid name of #{ self }: #{ name }" unless val
       return val
+    end
+
+    def from value
+      case value
+      when nil
+        nil
+      when self
+        value
+      when Range
+        Range::new from(value.begin), from(value.end), value.exclude_end?
+      when Set
+        Set[*value.map { |v| from(v) }]
+      when Enumerable
+        value.map { |v| from(v) }
+      else
+        raise ArgumentError, "Invalid value of #{ self }: #{ value.inspect }", caller_locations
+      end
     end
 
     def each
