@@ -16,4 +16,5 @@ class Alpha < IS::Enum
   define :Gamma, 30
   define :g_letter, alias: :Gamma
 
+  finalize!
 end

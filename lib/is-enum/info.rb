@@ -4,6 +4,7 @@ module IS
   class Enum; end
 end
 
+# @api private
 module IS::Enum::Info
 
   NAME = 'is-enum'

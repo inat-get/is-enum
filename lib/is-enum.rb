@@ -4,6 +4,32 @@ require 'set'
 
 module IS; end
 
+# @note Thread safety
+#
+#   Enum definition ({.define}) and finalization ({.finalize!}) are
+#   thread-safe. Lookup operations are thread-safe after definition.
+#
+# @note Class variables
+#
+#   Uses class variables (`@@enums`, `@@mutex`) shared across inheritance
+#   hierarchy. All enum classes register in global `@@enums` for {.parse}.
+#
+# @note Custom attributes
+#
+#   Additional attributes passed to {.define} are stored in `@attrs`.
+#   Subclasses may access this hash directly to implement custom properties.
+#
+#     class Status < IS::Enum
+#       define :error, 1, http_code: 500, retryable: false
+#
+#       def http_code
+#         @attrs[:http_code]
+#       end
+#
+#       def retryable?
+#         @attrs[:retryable]
+#       end
+#     end
 class IS::Enum
 
   include Comparable
@@ -14,6 +40,14 @@ class IS::Enum
 
     # @group Conversion
 
+    # In specific enum class: get enum value by name; in {IS::Enum} itself: parse string like "Class.name" to enum value.
+    #
+    # @param source [String] the string to parse
+    # @return [IS::Enum] the enum value
+    # @raise [ArgumentError] if source is not a String or value not found
+    # @note Security consideration
+    #   Converts strings to Symbols internally. Do not use with untrusted
+    #   user input to avoid memory exhaustion from symbol creation.
     def parse source
       raise ArgumentError, "Invalid source for parsing: #{ source.inspect }", caller_locations unless source.is_a?(String)
       if self == IS::Enum
@@ -31,6 +65,12 @@ class IS::Enum
       end
     end
 
+    # Strict lookup by name. Raises if not found.
+    # See {.[]} for lenient lookup
+    #
+    # @param name [Symbol]
+    # @return [IS::Enum]
+    # @raise [ArgumentError] if name is not a Symbol or value not found
     def of name
       raise ArgumentError, "Invalid name of #{ self }: #{ name.inspect }" unless name.is_a?(Symbol)
       val = @values[name] || @aliases[name]
@@ -38,6 +78,14 @@ class IS::Enum
       return val
     end
 
+    # Converts various types to enum values.
+    #
+    # @param [IS::Enum, nil, Range, Set, Enumerable, Symbol, String, Integer] value
+    # @return [IS::Enum, nil, Range<IS::Enum>, Set<IS::Enum>, Array<IS::Enum>]
+    # @example Convert range
+    #   MyEnum.from(:alpha..:gamma)  # => range of enum values
+    # @example Convert array
+    #   MyEnum.from([:alpha, :beta]) # => [MyEnum.alpha, MyEnum.beta]
     def from value
       case value
       when nil
@@ -59,6 +107,11 @@ class IS::Enum
 
     # @group Collection
 
+    # Lookup by name or order number. Returns nil if not found.
+    # See {.of} for strict lookup that raises on missing value
+    #
+    # @param name_or_order [String, Symbol, Integer]
+    # @return [IS::Enum, nil]
     def [](name_or_order)
       case name_or_order
       when String, Symbol
@@ -80,21 +133,32 @@ class IS::Enum
 
     # @return [Array<IS::Enum>]
     def values
-      @values.values.sort_by { |v| v.order_no }
+      @sorted ||= @values.values.sort_by { |v| v.order_no }
     end
 
+    # @return [Hash<Symbol, IS::Enum>] hash of alias names to target values
     def aliases
       @aliases
     end
 
+    # @return [IS::Enum, nil] last value by order_no, or nil if empty
     def last
-      values.to_a.last
+      values.last
     end
 
+    # @return [IS::Enum, nil] first value by order_no, or nil if empty
+    def first
+      values.first
+    end
+
+    # @return [Range<IS::Enum>] range from first to last value
     def to_range
       (first .. last)
     end
 
+    # @return [Hash<Symbol => IS::Enum>] hash of all names and aliases
+    # @note Both canonical names and aliases are included. To distinguish,
+    #   check {.aliases} for alias keys.
     def to_h
       result = {}
       result.merge! @values
@@ -107,9 +171,26 @@ class IS::Enum
 
     # @group DSL
 
+    # Defines new enum value or alias.
+    #
+    # @param name [Symbol, String] name of the value
+    # @param order_no [Integer, nil] explicit order number (auto-generated if nil)
+    # @param attrs [Hash] additional attributes
+    # @option attrs [IS::Enum, Symbol, String, nil] :alias create alias to existing value
+    # @option attrs [String, nil] :description description of the value
+    # @return [IS::Enum] defined value (or aliased value for alias)
+    # @raise [ArgumentError] on duplicate name, invalid alias, or invalid order_no
+    #
+    # @example Define values
+    #   class Status < IS::Enum
+    #     define :pending, 1, description: "Waiting for processing"
+    #     define :active, 2
+    #     define :archived, alias: :active
+    #   end    
     def define name, order_no = nil, **attrs
       @mutex ||= Thread::Mutex::new
       @mutex.synchronize do
+        @sorted = nil
         @values ||= {}
         @aliases ||= {}
         case name
@@ -162,6 +243,10 @@ class IS::Enum
       end
     end
 
+    # Freezes internal structures, preventing further modifications.
+    # After calling, {.define} will raise +RuntimeError+.
+    #
+    # @return [void]
     def finalize!
       @mutex ||= Thread::Mutex::new
       @mutex.synchronize do
@@ -185,13 +270,18 @@ class IS::Enum
 
   end
 
+  # Order No for sorting and comparison
+  # @note Non-unique order numbers
+  #   Multiple values may be defined with the same `order_no`. This affects
+  #   sorting order (undefined when equal) and comparison behavior.
+  #   See {#<=>} for comparison semantics.
   # @return [Integer]
   attr_reader :order_no
 
-  # @return [Symbol]
+  # @return [Symbol] value name
   attr_reader :name
 
-  # @return [String, nil]
+  # @return [String, nil] optional value description
   attr_reader :description
 
   # @private
@@ -204,12 +294,31 @@ class IS::Enum
 
   # @group Ordering
 
+  # Returns +1+ if +self > other+; +0+ if +self == other+; +-1+ if +self < other+. +nil+ if other is not same type.
+  #
+  # @see Comparable
+  # @return [Integer, nil]
+  # @note Comparison semantics
+  #   `==` and `<=>` compare by `order_no`, while `eql?` compares object identity.
+  #   Multiple values may share the same `order_no`; they compare as equal
+  #   but are distinct objects.
+  #
+  #     class Alpha < IS::Enum
+  #       define :alpha, 10
+  #       define :beta, 20
+  #       define :bi, 20
+  #       define :Gamma, 30
+  #       define :g_letter, alias: :Gamma
+  #     end
+  #     Alpha.beta == Alpha.bi           # => true (same order_no: 20)
+  #     Alpha.beta.eql?(Alpha.bi)        # => false (different objects)
+  #     Alpha.Gamma.eql?(Alpha.g_letter) # => true (alias is same object)
   def <=> other
     case other
     when self.class
       self.order_no <=> other.order_no
     when Symbol, String
-      self.order_no <=> self.class[other.to_sym].order_no
+      self.order_no <=> self.class[other.to_sym]&.order_no
     when Integer
       self.order_no <=> other
     else
@@ -217,6 +326,9 @@ class IS::Enum
     end
   end
 
+  # Returns the next value by order_no, or nil if last.
+  #
+  # @return [IS::Enum, nil]
   def succ
     self.class.values.find { |v| v.order_no > self.order_no }
   end
@@ -225,14 +337,17 @@ class IS::Enum
 
   # @group Conversion
 
+  # @return [Symbol] name as symbol
   def to_sym
     name
   end
 
+  # @return [String] name as string
   def to_s
     name.to_s
   end
 
+  # @return [String] detailed inspection string with class, name, order_no and attributes
   def inspect
     data = [ "#{ self.class }.#{ self.name }", "order_no=#{ @order_no }" ]
     data << "description=#{ @description.inspect }" if @description
