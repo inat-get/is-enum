@@ -11,8 +11,8 @@ module IS; end
 #
 # @note Class variables
 #
-#   Uses class variables (`@@enums`, `@@mutex`) shared across inheritance
-#   hierarchy. All enum classes register in global `@@enums` for {.parse}.
+#   Uses class variables ( +@@enums+, +@@mutex+ ) shared across inheritance
+#   hierarchy. All enum classes register in global +@@enums+ for {.parse}.
 #
 # @note Custom attributes
 #
