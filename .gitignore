@@ -4,3 +4,5 @@ doc/
 coverage/
 *_struct.md
 *.gem
+.bundler/
+vendor/
