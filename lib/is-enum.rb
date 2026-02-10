@@ -108,68 +108,77 @@ class IS::Enum
     # @group DSL
 
     def define name, order_no = nil, **attrs
-      @values ||= {}
-      @aliases ||= {}
-      case name
-      when String
-        name = name.to_sym
-      when Symbol
-        # do nothing
-      else
-        raise ArgumentError, "Invalid name: #{ name.inspect }", caller_locations
-      end
-      raise ArgumentError, "Duplicate value name: #{ name.inspect }", caller_locations if @values.has_key?(name) || @aliases.has_key?(name)
-      als = attrs.delete :alias
-      case als
-      when self
-        @aliases[name] = als
-        define_singleton_method name do
-          als
+      @mutex ||= Thread::Mutex::new
+      @mutex.synchronize do
+        @values ||= {}
+        @aliases ||= {}
+        case name
+        when String
+          name = name.to_sym
+        when Symbol
+          # do nothing
+        else
+          raise ArgumentError, "Invalid name: #{ name.inspect }", caller_locations
         end
-        return als
-      when Symbol, String
-        als = als.to_sym
-        als_value = @values[als] || @aliases[als]
-        raise ArgumentError, "Invalid alias #{ als.inspect }: value not found", caller_locations unless als_value
-        @aliases[name] = als_value
-        define_singleton_method name do
-          als_value
+        raise ArgumentError, "Duplicate value name: #{ name.inspect }", caller_locations if @values.has_key?(name) || @aliases.has_key?(name)
+        als = attrs.delete :alias
+        case als
+        when self
+          @aliases[name] = als
+          define_singleton_method name do
+            als
+          end
+          return als
+        when Symbol, String
+          als = als.to_sym
+          als_value = @values[als] || @aliases[als]
+          raise ArgumentError, "Invalid alias #{ als.inspect }: value not found", caller_locations unless als_value
+          @aliases[name] = als_value
+          define_singleton_method name do
+            als_value
+          end
+          return als_value
+        when nil
+          # do nothing
+        else
+          raise ArgumentError, "Invalid alias value: #{ als.inspect }", caller_locations
         end
-        return als_value
-      when nil
-        # do nothing
-      else
-        raise ArgumentError, "Invalid alias value: #{ als.inspect }", caller_locations
-      end
-      case order_no
-      when Integer
-        # do nothing
-      when nil
-        order_no = (@values.values.map(&:order_no).max || 0) + 1
-      else
-        raise ArgumentError, "Invalid order_no value: #{ order_no.inspect }", caller_locations
-      end
-      description = attrs.delete :description
-      raise ArgumentError, "Invalid description value: #{ description.inspect }", caller_locations unless description.nil? || description.is_a?(String)
-      value = new(order_no, name, description, **attrs).freeze
-      @values[name] = value
-      define_singleton_method name do 
+        case order_no
+        when Integer
+          # do nothing
+        when nil
+          order_no = (@values.values.map(&:order_no).max || 0) + 1
+        else
+          raise ArgumentError, "Invalid order_no value: #{ order_no.inspect }", caller_locations
+        end
+        description = attrs.delete :description
+        raise ArgumentError, "Invalid description value: #{ description.inspect }", caller_locations unless description.nil? || description.is_a?(String)
+        value = new(order_no, name, description, **attrs).freeze
+        @values[name] = value
+        define_singleton_method name do 
+          value
+        end
         value
       end
-      value
     end
 
     def finalize!
-      @values.freeze
-      @aliases.freeze
+      @mutex ||= Thread::Mutex::new
+      @mutex.synchronize do
+        @values.freeze
+        @aliases.freeze
+      end
     end
 
     # @endgroup
 
     # @private
     def inherited subclass
-      @@enums ||= {}
-      @@enums[subclass.name] = subclass
+      @@mutex ||= Thread::Mutex::new
+      @@mutex.synchronize do
+        @@enums ||= {}
+        @@enums[subclass.name] = subclass
+      end
     end
 
     private :new
