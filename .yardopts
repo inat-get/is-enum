@@ -1,4 +1,7 @@
 --title "IS::Enum"
+--readme README.md
+--files README.md 
+--asset coverage-badge.svg
 --protected
 --no-private
 lib/**/*.rb

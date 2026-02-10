@@ -10,7 +10,7 @@ Gem::Specification::new do |s|
   s.homepage =   IS::Enum::Info::HOMEPAGE
   s.license  =   IS::Enum::Info::LICENSE
 
-  s.files = Dir[ 'lib/**/*', 'README.md', 'LICENSE' ]
+  s.files = Dir[ 'lib/**/*', 'README.md', 'LICENSE', 'coverage-badge.svg' ]
 
   s.required_ruby_version = "~> 3.4"
 
