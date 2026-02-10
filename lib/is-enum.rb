@@ -12,20 +12,10 @@ class IS::Enum
 
     include Enumerable
 
-    def [] name_or_order
-      case name_or_order
-      when String, Symbol
-        key = name_or_order.to_sym
-        @values[key] || @aliases[key]
-      when Integer
-        @values.values.find { |v| v.order_no == name_or_order }
-      else
-        raise ArgumentError, "Invalid value for name or order_no: #{ name_or_order.inspect }", caller_locations
-      end
-    end
+    # @group Conversion
 
     def parse source
-      raise ArgumentError, "Invalid source for parsing: #{ source.inspect }", caller_locations
+      raise ArgumentError, "Invalid source for parsing: #{ source.inspect }", caller_locations unless source.is_a?(String)
       if self == IS::Enum
         parts = source.split '.'
         raise ArgumentError, "Parsing error from #{ source.inspect }", caller_locations unless parts.is_a?(Array) && parts.size == 2
@@ -65,11 +55,30 @@ class IS::Enum
       end
     end
 
+    # @endgroup
+
+    # @group Collection
+
+    def [](name_or_order)
+      case name_or_order
+      when String, Symbol
+        key = name_or_order.to_sym
+        @values[key] || @aliases[key]
+      when Integer
+        @values.values.find { |v| v.order_no == name_or_order }
+      else
+        raise ArgumentError, "Invalid value for name or order_no: #{name_or_order.inspect}", caller_locations
+      end
+    end
+
+    # @return [Enumerator, self]
     def each
       return to_enum(__method__) unless block_given?
       @values.values.sort_by { |v| v.order_no }.each { |v| yield v }
+      self
     end
 
+    # @return [Array<IS::Enum>]
     def values
       @values.values.sort_by { |v| v.order_no }
     end
@@ -92,7 +101,11 @@ class IS::Enum
       result.merge! @aliases
     end
 
+    # @endgroup
+
     protected
+
+    # @group DSL
 
     def define name, order_no = nil, **attrs
       @values ||= {}
@@ -151,6 +164,9 @@ class IS::Enum
       @aliases.freeze
     end
 
+    # @endgroup
+
+    # @private
     def inherited subclass
       @@enums ||= {}
       @@enums[subclass.name] = subclass
@@ -160,14 +176,24 @@ class IS::Enum
 
   end
 
-  attr_reader :order_no, :name, :description
+  # @return [Integer]
+  attr_reader :order_no
 
+  # @return [Symbol]
+  attr_reader :name
+
+  # @return [String, nil]
+  attr_reader :description
+
+  # @private
   def initialize order_no, name, description, **attrs
     @order_no = order_no
     @name = name
     @description = description
     @attrs = attrs
   end
+
+  # @group Ordering
 
   def <=> other
     case other
@@ -182,12 +208,16 @@ class IS::Enum
     end
   end
 
-  def to_sym
-    name
-  end
-
   def succ
     self.class.values.find { |v| v.order_no > self.order_no }
+  end
+
+  # @endgroup
+
+  # @group Conversion
+
+  def to_sym
+    name
   end
 
   def to_s
@@ -202,5 +232,7 @@ class IS::Enum
     end
     "[enum #{ data.join(' ') }]"
   end
+
+  # @endgroup
 
 end

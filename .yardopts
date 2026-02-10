@@ -1,0 +1,4 @@
+--title "IS::Enum"
+--protected
+--no-private
+lib/**/*.rb
