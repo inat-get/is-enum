@@ -99,7 +99,7 @@ class IS::Enum
       when Enumerable
         value.map { |v| from(v) }
       else
-        self[value]
+        self[value] || raise ArgumentError, "Invalid value of #{ self }: #{ value.inspect }", caller_locations
       end
     end
 
