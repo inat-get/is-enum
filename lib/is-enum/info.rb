@@ -8,7 +8,7 @@ end
 module IS::Enum::Info
 
   NAME = 'is-enum'
-  VERSION = '0.8.8.6'
+  VERSION = '0.8.10'
   SUMMARY = 'Enum types for Ruby'
   AUTHOR  = 'Ivan Shikhalev'
   HOMEPAGE = 'https://github.com/inat-get/is-enum'
