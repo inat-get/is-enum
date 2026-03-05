@@ -169,7 +169,7 @@ class IS::Enum
 
     # @endgroup
 
-    protected
+    private
 
     # @group DSL
 
@@ -246,7 +246,7 @@ class IS::Enum
     end
 
     # Freezes internal structures, preventing further modifications.
-    # After calling, {.define} will raise +RuntimeError+.
+    # After calling, {.define} will raise +FrozenError+.
     #
     # @return [void]
     def finalize!
@@ -255,6 +255,10 @@ class IS::Enum
         @values.freeze
         @aliases.freeze
       end
+    end
+
+    def finalized?
+      @values.frozen?
     end
 
     # @endgroup
