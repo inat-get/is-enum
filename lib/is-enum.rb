@@ -129,7 +129,7 @@ class IS::Enum
     # @return [Enumerator, self]
     def each
       return to_enum(__method__) unless block_given?
-      @values.values.sort_by { |v| v.order_no }.each { |v| yield v }
+      values.each { |v| yield v }
       self
     end
 
@@ -162,9 +162,15 @@ class IS::Enum
     # @note Both canonical names and aliases are included. To distinguish,
     #   check {.aliases} for alias keys.
     def to_h
-      result = {}
-      result.merge! @values
-      result.merge! @aliases
+      @values.merge(@aliases)
+    end
+
+    # @param [Range] range
+    # @return [Array<IS::Enum>]
+    def to_a range = nil
+      return values unless range
+      raise ArgumentError, "Invalid 'range' argument: #{ range.inspect }", caller_locations unless range.is_a?(Range)
+      values.select { |item| (range.begin.nil? || item >= range.begin) && (range.end.nil? || item < range.end || (!range.exclude_end? && item == range.end)) }
     end
 
     # @endgroup
@@ -190,11 +196,8 @@ class IS::Enum
     #     define :archived, alias: :active
     #   end    
     def define name, order_no = nil, **attrs
-      @mutex ||= Thread::Mutex::new
       @mutex.synchronize do
         @sorted = nil
-        @values ||= {}
-        @aliases ||= {}
         case name
         when String
           name = name.to_sym
@@ -250,7 +253,7 @@ class IS::Enum
     #
     # @return [void]
     def finalize!
-      @mutex ||= Thread::Mutex::new
+      return if finalized?
       @mutex.synchronize do
         @values.freeze
         @aliases.freeze
@@ -265,11 +268,15 @@ class IS::Enum
 
     # @private
     def inherited subclass
+      super
       @@mutex ||= Thread::Mutex::new
       @@mutex.synchronize do
         @@enums ||= {}
-        @@enums[subclass.name] = subclass
+        @@enums[subclass.name] = subclass if subclass.name
       end
+      subclass.instance_variable_set(:@mutex, Thread::Mutex::new)
+      subclass.instance_variable_set(:@values, {})
+      subclass.instance_variable_set(:@aliases, {})
     end
 
     private :new

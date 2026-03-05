@@ -67,4 +67,9 @@ RSpec.describe IS::Enum do
     expect(h[:Gamma]).to eq(h[:g_letter])
   end
 
+  it "to_a" do
+    expect(Alpha.to_a.map(&:order_no)).to eq([10, 20, 20, 30])
+    expect(Alpha.to_a(:beta .. ).size).to eq(3)
+  end
+
 end
